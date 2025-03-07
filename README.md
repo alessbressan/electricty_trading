@@ -1,1 +1,2 @@
-# Trading Ideas Implementation
+# Trading Implementation
+
