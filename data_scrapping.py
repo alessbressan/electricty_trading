@@ -11,14 +11,25 @@ class DataScrapping:
         self.n_years = n_years
         self.features = pd.DataFrame()
     
-    def update_features(self, new_feature:pd.DataFrame, name:str):
-        new_feature.columns = [name]
-        
+    def get_features(self):
+        self.update_features(self.rt_prices(), name= 'RT Prices')
+        self.update_features(self.da_prices(), name= 'DA Prices')
+        # # self.weather_forecast()
+        self.update_features(self.load_forecast(), name= 'Load Forecast')
+        self.update_features(self.capacity(), name= 'Capacity')
+    
+    def update_features(self, new_feature:pd.Series, name:str):
+        new_feature.rename(name, inplace= True)  # Corrected: store the renamed series
+
         if self.features.empty:
-            self.features = new_feature
+            self.features = new_feature.to_frame()  # Convert Series to DataFrame
+            self.features.index = pd.to_datetime(self.features.index)
         else:
+            if name in self.features.columns:
+                raise ValueError(f"Column '{name}' already exists in features. Choose a different name.")
             
-            self.features.merge(new_feature, left_index= True, right_index= True)
+            new_feature.index = pd.to_datetime(new_feature.index)
+            self.features = self.features.merge(new_feature.to_frame(), left_index=True, right_index=True)
     
     def compute_HDD(max_temp, min_temp, base_temp= 65):
         """
@@ -98,8 +109,7 @@ class DataScrapping:
         real_time.set_index('Time Stamp', inplace= True)
         real_time = real_time.resample('60min').mean()
 
-        self.update_features(real_time['LBMP ($/MWHr)'], name= 'RT_prices' )
-        return real_time
+        return real_time['LBMP ($/MWHr)']
     
     def da_prices(self):
         df_year = []
@@ -140,8 +150,7 @@ class DataScrapping:
         day_ahead['Time Stamp'] = pd.to_datetime(day_ahead['Time Stamp'])
         day_ahead.set_index('Time Stamp', inplace= True)
 
-        self.update_features(day_ahead['LBMP ($/MWHr)'], name= 'DA_prices' )
-        return day_ahead
+        return day_ahead['LBMP ($/MWHr)']
 
     def weather_forecast(self):
         df_year = []
@@ -227,9 +236,11 @@ class DataScrapping:
 
         load = pd.concat(df_year, ignore_index=True)
         load.dropna(axis=1, inplace= True)
-        load.set_index('Time Stamp', inplace= True)
+        load['Time Stamp'] = pd.to_datetime(load['Time Stamp'], format="%m/%d/%Y %H:%M")
 
-        self.update_features(load['Longil'], name= 'Load_Forecast')
+        # format of timestamp does not include seconds must add
+        load['Time Stamp'] = load['Time Stamp'].dt.strftime("%Y-%m-%d %H:%M:%S")
+        load.set_index('Time Stamp', inplace= True)
 
         return load['Longil']
     
@@ -268,15 +279,15 @@ class DataScrapping:
 
         flows = pd.concat(df_year, ignore_index=True)
         flows['Timestamp'] = pd.to_datetime(flows['Timestamp'])
-
         flows.set_index('Timestamp', inplace= True)
         flows.drop(columns= ['Interface Name', 'Point ID'], inplace= True)
+
         flows_5m = flows.resample('5min').sum()
         flows_60m = flows_5m.resample('60min').mean()
         
-        self.update_features(flows_60m['Positive Limit (MWH)'], name= 'Capacity')
         return flows_60m['Positive Limit (MWH)']
 
 if __name__ == '__main__':
     data = DataScrapping(start_date= 20200101, n_years= 1)
+    data.get_features()
     print(data.features)
