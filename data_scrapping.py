@@ -19,7 +19,10 @@ class DataScrapping:
         self.update_features(self.capacity(), name= 'Capacity')
     
     def update_features(self, new_feature:pd.Series, name:str):
-        new_feature.rename(name, inplace= True)  # Corrected: store the renamed series
+        new_feature = new_feature.rename(name)
+        
+        # apparently pd.concat adds duplicate indices 
+        # self.features = self.features.loc[~self.features.index.duplicated(keep='first')]
 
         if self.features.empty:
             self.features = new_feature.to_frame()  # Convert Series to DataFrame
@@ -28,8 +31,11 @@ class DataScrapping:
             if name in self.features.columns:
                 raise ValueError(f"Column '{name}' already exists in features. Choose a different name.")
             
+            self.features.index = pd.to_datetime(self.features.index)
             new_feature.index = pd.to_datetime(new_feature.index)
-            self.features = self.features.merge(new_feature.to_frame(), left_index=True, right_index=True)
+            
+            self.features = pd.merge(self.features, new_feature.to_frame(), how='left', left_index= True, right_index= True)
+            # self.features = pd.concat([self.features, new_feature.to_frame()], axis=1)
     
     def compute_HDD(max_temp, min_temp, base_temp= 65):
         """
@@ -105,6 +111,7 @@ class DataScrapping:
         real_time = pd.concat(df_year, ignore_index=True)
         real_time = real_time[real_time['Name'] == 'LONGIL']
         real_time.drop(columns=['Name', 'PTID'], inplace= True)
+        real_time.drop_duplicates('Time Stamp', inplace= True)
         real_time['Time Stamp'] = pd.to_datetime(real_time['Time Stamp'])
         real_time.set_index('Time Stamp', inplace= True)
         real_time = real_time.resample('60min').mean()
@@ -147,6 +154,7 @@ class DataScrapping:
         day_ahead = pd.concat(df_year, ignore_index=True)
         day_ahead = day_ahead[day_ahead['Name'] == 'LONGIL']
         day_ahead.drop(columns=['Name', 'PTID'], inplace= True)
+        day_ahead.drop_duplicates('Time Stamp', inplace= True)
         day_ahead['Time Stamp'] = pd.to_datetime(day_ahead['Time Stamp'])
         day_ahead.set_index('Time Stamp', inplace= True)
 
@@ -236,6 +244,7 @@ class DataScrapping:
 
         load = pd.concat(df_year, ignore_index=True)
         load.dropna(axis=1, inplace= True)
+        load.drop_duplicates('Time Stamp', inplace= True)
         load['Time Stamp'] = pd.to_datetime(load['Time Stamp'], format="%m/%d/%Y %H:%M")
 
         # format of timestamp does not include seconds must add
@@ -278,9 +287,11 @@ class DataScrapping:
                 print('Failed to download ZIP files')        
 
         flows = pd.concat(df_year, ignore_index=True)
+        flows.drop(columns= ['Interface Name', 'Point ID'], inplace= True)
+        flows.drop_duplicates('Timestamp', inplace= True)
+        
         flows['Timestamp'] = pd.to_datetime(flows['Timestamp'])
         flows.set_index('Timestamp', inplace= True)
-        flows.drop(columns= ['Interface Name', 'Point ID'], inplace= True)
 
         flows_5m = flows.resample('5min').sum()
         flows_60m = flows_5m.resample('60min').mean()
