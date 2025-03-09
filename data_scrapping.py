@@ -288,6 +288,7 @@ class DataScrapping:
         return flows_60m['Positive Limit (MWH)']
 
 if __name__ == '__main__':
-    data = DataScrapping(start_date= 20200101, n_years= 1)
+    data = DataScrapping(start_date= 20200101, n_years= 2)
     data.get_features()
-    print(data.features)
+    df = data.features
+    df.to_csv('data/clean_data.csv') 
