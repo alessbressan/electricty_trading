@@ -17,20 +17,32 @@ class DataScrapping:
         self.features = pd.DataFrame()
     
     def get_features(self):
+        # Adding all RAW Data
         self.update_features(self.rt_prices(), name= 'RT Prices')
         self.update_features(self.da_prices(), name= 'DA Prices')
+        self.update_features(self.load_realized(), name= 'Load Realized')
         self.update_features(self.load_forecast(), name= 'Load Forecast')
         self.update_features(self.capacity(), name= 'Capacity')
         self.weather_forecast_api()
-        print(self.weather_features)
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
+
+        # Adding Load-Capacity Ratio
+        self.features['Load-Capacity Ratio'] = self.features['Load Forecast'] / self.features['Capacity']
+
+        # Adding HDD and CDD
+        print(self.features.columns)
+        self.features['HDD'] = self.features.apply(lambda x: self.compute_HDD(temp= x['Temperature']), axis= 1)
+        self.features['CDD'] = self.features.apply(lambda x: self.compute_CDD(temp= x['Temperature']), axis= 1)
+
+        # Adding Forecast Error
+        # I think we need to shift 1 day backwards for the day ahead forecast since 
+        # the time stamp is the DA Forecast for the next day, WAIT DOES THAT MEAN ALL OF OUR FORECASTED DATA MUST BE SHIFTED?
+        self.features['Price Error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
+        self.features['Load Error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
         
     
     def update_features(self, new_feature:pd.Series, name:str):
         new_feature = new_feature.rename(name)
-        
-        # apparently pd.concat adds duplicate indices 
-        # self.features = self.features.loc[~self.features.index.duplicated(keep='first')]
 
         if self.features.empty:
             self.features = new_feature.to_frame()  # Convert Series to DataFrame
@@ -43,9 +55,8 @@ class DataScrapping:
             new_feature.index = pd.to_datetime(new_feature.index)
             
             self.features = pd.merge(self.features, new_feature.to_frame(), how='left', left_index= True, right_index= True)
-            # self.features = pd.concat([self.features, new_feature.to_frame()], axis=1)
     
-    def compute_HDD(temp:float, base_temp= 18.3):
+    def compute_HDD(self, temp:float, base_temp= 18.3):
         """
         Parameters:
             temp (float): The maximum temperature for the day in Celcius.
@@ -57,7 +68,7 @@ class DataScrapping:
         hdd = max(0, base_temp - temp)
         return hdd
 
-    def compute_CDD(temp:float, base_temp= 18.3):
+    def compute_CDD(self, temp:float, base_temp= 18.3):
         """
         Parameters:
             temp (float): The maximum temperature for the day in Celcius.
@@ -66,17 +77,13 @@ class DataScrapping:
         Returns:
             float: The Heating Degree Days for the day.
         """
-        hdd = max(0, temp - base_temp)
-        return hdd
+        cdd = max(0, temp - base_temp)
+        return cdd
     
     def increment_date_by_month(self, date_str, increment):
-        # Step 1: Convert the string to a datetime object
         date = pd.to_datetime(date_str, format='%Y%m%d')
-        
-        # Step 2: Add one month
         next_month_date = date + pd.DateOffset(months=increment)
         
-        # Step 3: Convert the datetime object back to a string in the desired format
         return next_month_date.strftime('%Y%m%d')
     
     def rt_prices(self):
@@ -314,6 +321,49 @@ class DataScrapping:
 
         return load['Longil']
     
+    def load_realized(self):
+        df_year = []
+
+        for i in range(12*self.n_years):
+            url_date = self.increment_date_by_month(self.start_year, i)
+            zip_url = f'csv/pal/{url_date}pal_csv.zip'
+
+            #GET request
+            response = requests.get(self.url+zip_url)
+
+            #check if it went through
+            if response.status_code == 200:
+                #extract zip file
+                with zipfile.ZipFile(io.BytesIO(response.content), 'r') as zip_ref:
+                    file_list = zip_ref.namelist()
+                    #initialize an empty list
+
+                    dfs =[]
+
+                    #loop through CSV
+                    for file_name in file_list:
+                        if file_name.endswith('.csv'):
+                            with zip_ref.open(file_name) as csv_file:
+                                df = pd.read_csv(csv_file)
+                            
+                            dfs.append(df)
+                    
+                    #merge dataframes
+                    combined_df = pd.concat(dfs, ignore_index=True)
+                    df_year.append(combined_df)
+            else:
+                print('Failed to download ZIP files')
+
+        actual_load = pd.concat(df_year, ignore_index=True)
+        actual_load = actual_load[actual_load['Name'] == 'LONGIL'].drop(columns= ['Name', 'Time Zone', 'PTID'])
+
+        actual_load['Time Stamp'] = pd.to_datetime(actual_load['Time Stamp'], format="%m/%d/%Y %H:%M:%S")
+        actual_load['Time Stamp'] = actual_load['Time Stamp'].dt.strftime("%Y-%m-%d %H:%M:%S")
+        actual_load['Time Stamp'] = pd.to_datetime(actual_load['Time Stamp'])
+        actual_load.set_index('Time Stamp', inplace=True)
+        actual_load = actual_load.resample('60min').mean()
+        return actual_load['Load']
+    
     def capacity(self):
         df_year = []
 
@@ -362,4 +412,4 @@ class DataScrapping:
 if __name__ == '__main__':
     data = DataScrapping(start_date= 20200101, n_years= 2)
     data.get_features()
-    print(data.features)
+    data.features.to_csv('data/ml_features.csv')
