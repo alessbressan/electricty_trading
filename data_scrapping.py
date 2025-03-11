@@ -13,14 +13,18 @@ class DataScrapping:
         self.url = 'http://mis.nyiso.com/public/'
         self.start_year = start_date
         self.n_years = n_years
+        self.weather_features = pd.DataFrame()
         self.features = pd.DataFrame()
     
     def get_features(self):
         self.update_features(self.rt_prices(), name= 'RT Prices')
-        # self.update_features(self.da_prices(), name= 'DA Prices')
-        self.update_features(self.weather_forecast_api(), name= 'Weather')
-        # self.update_features(self.load_forecast(), name= 'Load Forecast')
-        # self.update_features(self.capacity(), name= 'Capacity')
+        self.update_features(self.da_prices(), name= 'DA Prices')
+        self.update_features(self.load_forecast(), name= 'Load Forecast')
+        self.update_features(self.capacity(), name= 'Capacity')
+        self.weather_forecast_api()
+        print(self.weather_features)
+        self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
+        
     
     def update_features(self, new_feature:pd.Series, name:str):
         new_feature = new_feature.rename(name)
@@ -41,32 +45,28 @@ class DataScrapping:
             self.features = pd.merge(self.features, new_feature.to_frame(), how='left', left_index= True, right_index= True)
             # self.features = pd.concat([self.features, new_feature.to_frame()], axis=1)
     
-    def compute_HDD(max_temp, min_temp, base_temp= 65):
+    def compute_HDD(temp:float, base_temp= 18.3):
         """
         Parameters:
-            max_temp (float): The maximum temperature for the day in Fahrenheit.
-            min_temp (float): The minimum temperature for the day in Fahrenheit.
-            base_temp (float): The base temperature in Fahrenheit (default is 65°C).
+            temp (float): The maximum temperature for the day in Celcius.
+            base_temp (float): The base temperature in Celcius (default is 18.3°C).
             
         Returns:
             float: The Heating Degree Days for the day.
         """
-        avg_temp = (max_temp + min_temp) / 2
-        hdd = max(0, base_temp - avg_temp)
+        hdd = max(0, base_temp - temp)
         return hdd
 
-    def compute_CDD(max_temp, min_temp, base_temp= 65):
+    def compute_CDD(temp:float, base_temp= 18.3):
         """
         Parameters:
-            max_temp (float): The maximum temperature for the day in Fahrenheit.
-            min_temp (float): The minimum temperature for the day in Fahrenheit.
-            base_temp (float): The base temperature in Fahrenheit (default is 65°C).
+            temp (float): The maximum temperature for the day in Celcius.
+            base_temp (float): The base temperature in Celcius (default is 18.3°C).
             
         Returns:
             float: The Heating Degree Days for the day.
         """
-        avg_temp = (max_temp + min_temp) / 2
-        hdd = max(0, avg_temp - base_temp)
+        hdd = max(0, temp - base_temp)
         return hdd
     
     def increment_date_by_month(self, date_str, increment):
@@ -215,11 +215,11 @@ class DataScrapping:
 
         hourly_weather = pd.DataFrame(data = hourly_data)
         hourly_weather.set_index('date', inplace= True)
+        hourly_weather.columns = ['Temperature', 'Humidity', 'Precipitation', 'Wind Speed', 'Wind Direction']
+        hourly_weather.index = pd.to_datetime(hourly_weather.index)
 
-        # hourly_weather['HDD'] = hourly_weather.apply(lambda x: self.compute_HDD(max_temp= x['temperature_2m'], min_temp= x['temperature_2m']), axis= 1)
-        # hourly_weather['CDD'] = hourly_weather.apply(lambda x: self.compute_CDD(max_temp= x['temperature_2m'], min_temp= x['temperature_2m']), axis= 1)
-        
-        return hourly_weather["temperature_2m"]
+        self.weather_features = hourly_weather
+        return hourly_weather
 
     def weather_forecast_nyiso(self):
         df_year = []
