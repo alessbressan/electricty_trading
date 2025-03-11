@@ -227,55 +227,6 @@ class DataScrapping:
 
         self.weather_features = hourly_weather
         return hourly_weather
-
-    def weather_forecast_nyiso(self):
-        df_year = []
-
-        for i in range(12*self.n_years):
-            url_date = self.increment_date_by_month(self.start_year, i)
-            zip_url = f'csv/lfweather/{url_date}lfweather_csv.zip'
-
-            #GET request
-            response = requests.get(self.url+zip_url)
-
-            #check if it went through
-            if response.status_code == 200:
-                #extract zip file
-                with zipfile.ZipFile(io.BytesIO(response.content), 'r') as zip_ref:
-                    file_list = zip_ref.namelist()
-                    #initialize an empty list
-
-                    dfs =[]
-
-                    #loop through CSV
-                    for file_name in file_list:
-                        if file_name.endswith('.csv'):
-                            with zip_ref.open(file_name) as csv_file:
-                                df = pd.read_csv(csv_file)
-                                df = df[(df['Station ID'].isin(['ISP', 'LGA', 'JFK'])) & (df['Vintage'] == 'Forecast')]                    
-                            dfs.append(df)
-                    
-                    #merge dataframes
-                    combined_df = pd.concat(dfs, ignore_index=True)
-                    df_year.append(combined_df)
-            else:
-                print('Failed to download ZIP files')
-
-        weather = pd.concat(df_year, ignore_index=True)
-        weather.dropna(axis= 1, inplace= True)
-        weather['Forecast Date'] = pd.to_datetime(weather['Forecast Date'])
-        weather['Vintage Date'] = pd.to_datetime(weather['Vintage Date'])
-
-        weather['Forecast Date'] + pd.DateOffset(days=1)
-
-        weather['HDD'] = weather.apply(lambda x: self.compute_HDD(max_temp= x['Max Temp'], min_temp= x['Min Temp']), axis= 1)
-        weather['CDD'] = weather.apply(lambda x: self.compute_CDD(max_temp= x['Max Temp'], min_temp= x['Min Temp']), axis= 1)
-
-        #############################################################################
-        ##### NEED TO GET HOURLY FORECASTS OF WEATHER INSTEAD OF DAILY FORECAST ##### 
-        #############################################################################
-
-        return weather
     
     def load_forecast(self):
         df_year = []
