@@ -362,5 +362,4 @@ class DataScrapping:
 if __name__ == '__main__':
     data = DataScrapping(start_date= 20200101, n_years= 2)
     data.get_features()
-    df = data.features
-    df.to_csv('data/clean_data.csv') 
+    print(data.features)
