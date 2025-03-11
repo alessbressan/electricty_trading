@@ -16,13 +16,17 @@ class DataScrapping:
         self.weather_features = pd.DataFrame()
         self.features = pd.DataFrame()
     
-    def get_features(self):
+    def get_list_features(self, list:list):
+        assert set(list).issubset(self.features.columns), "List contains missing value in feature"
+        return self.features[list]
+    
+    def update_features(self):
         # Adding all RAW Data
-        self.update_features(self.rt_prices(), name= 'RT Prices')
-        self.update_features(self.da_prices(), name= 'DA Prices')
-        self.update_features(self.load_realized(), name= 'Load Realized')
-        self.update_features(self.load_forecast(), name= 'Load Forecast')
-        self.update_features(self.capacity(), name= 'Capacity')
+        self.merge_features(self.rt_prices(), name= 'RT Prices')
+        self.merge_features(self.da_prices(), name= 'DA Prices')
+        self.merge_features(self.load_realized(), name= 'Load Realized')
+        self.merge_features(self.load_forecast(), name= 'Load Forecast')
+        self.merge_features(self.capacity(), name= 'Capacity')
         self.weather_forecast_api()
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
 
@@ -39,9 +43,8 @@ class DataScrapping:
         # the time stamp is the DA Forecast for the next day, WAIT DOES THAT MEAN ALL OF OUR FORECASTED DATA MUST BE SHIFTED?
         self.features['Price Error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
         self.features['Load Error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
-        
     
-    def update_features(self, new_feature:pd.Series, name:str):
+    def merge_features(self, new_feature:pd.Series, name:str):
         new_feature = new_feature.rename(name)
 
         if self.features.empty:
@@ -362,5 +365,8 @@ class DataScrapping:
 
 if __name__ == '__main__':
     data = DataScrapping(start_date= 20200101, n_years= 2)
-    data.get_features()
-    data.features.to_csv('data/ml_features.csv')
+    data.update_features()
+    # making a subset of data
+    df = data.get_list_features(['HDD', 'CDD', 'Temperature', 'Wind Speed', 'Load-Capacity Ratio', 'Load Error', 'Price Error'])
+    df.index.name = 'date' # Need this modification to use in the Informer Architecture
+    df.to_csv('data/ml_features_subset.csv')
