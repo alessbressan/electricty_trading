@@ -31,19 +31,21 @@ class DataScrapping:
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
 
         # Adding Load-Capacity Ratio
-        self.features['Load-Capacity Ratio'] = self.features['Load Forecast'] / self.features['Capacity']
+        self.features['load_capacity_ratio'] = self.features['Load Forecast'] / self.features['Capacity']
 
         # Adding HDD and CDD
         print(self.features.columns)
-        self.features['HDD'] = self.features.apply(lambda x: self.compute_HDD(temp= x['Temperature']), axis= 1)
-        self.features['CDD'] = self.features.apply(lambda x: self.compute_CDD(temp= x['Temperature']), axis= 1)
+        self.features['hdd'] = self.features.apply(lambda x: self.compute_HDD(temp= x['temperature']), axis= 1)
+        self.features['cdd'] = self.features.apply(lambda x: self.compute_CDD(temp= x['temperature']), axis= 1)
 
         # Adding Forecast Error
         # I think we need to shift 1 day backwards for the day ahead forecast since 
         # the time stamp is the DA Forecast for the next day, WAIT DOES THAT MEAN ALL OF OUR FORECASTED DATA MUST BE SHIFTED?
-        self.features['Price Error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
-        self.features['Load Error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
-    
+        self.features['price_error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
+        self.features['load_error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
+
+        self.features.dropna(inplace= True)
+
     def merge_features(self, new_feature:pd.Series, name:str):
         new_feature = new_feature.rename(name)
 
@@ -124,8 +126,10 @@ class DataScrapping:
 
         real_time = pd.concat(df_year, ignore_index=True)
         real_time = real_time[real_time['Name'] == 'LONGIL']
+        real_time.dropna(inplace= True)
         real_time.drop(columns=['Name', 'PTID'], inplace= True)
         real_time.drop_duplicates('Time Stamp', inplace= True)
+
         real_time['Time Stamp'] = pd.to_datetime(real_time['Time Stamp'])
         real_time.set_index('Time Stamp', inplace= True)
         real_time = real_time.resample('60min').mean()
@@ -225,7 +229,7 @@ class DataScrapping:
 
         hourly_weather = pd.DataFrame(data = hourly_data)
         hourly_weather.set_index('date', inplace= True)
-        hourly_weather.columns = ['Temperature', 'Humidity', 'Precipitation', 'Wind Speed', 'Wind Direction']
+        hourly_weather.columns = ['temperature', 'humidity', 'precipitation', 'wind_speed', 'wind_direction']
         hourly_weather.index = pd.to_datetime(hourly_weather.index)
 
         self.weather_features = hourly_weather
@@ -310,6 +314,7 @@ class DataScrapping:
 
         actual_load = pd.concat(df_year, ignore_index=True)
         actual_load = actual_load[actual_load['Name'] == 'LONGIL'].drop(columns= ['Name', 'Time Zone', 'PTID'])
+        actual_load.dropna(inplace= True)
 
         actual_load['Time Stamp'] = pd.to_datetime(actual_load['Time Stamp'], format="%m/%d/%Y %H:%M:%S")
         actual_load['Time Stamp'] = actual_load['Time Stamp'].dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -364,9 +369,9 @@ class DataScrapping:
         return flows_60m['Positive Limit (MWH)']
 
 if __name__ == '__main__':
-    data = DataScrapping(start_date= 20200101, n_years= 2)
+    data = DataScrapping(start_date= 20160101, n_years= 5)
     data.update_features()
     # making a subset of data
-    df = data.get_list_features(['HDD', 'CDD', 'Temperature', 'Wind Speed', 'Load-Capacity Ratio', 'Load Error', 'Price Error'])
+    df = data.get_list_features(['hdd', 'cdd', 'temperature', 'wind_speed', 'load_capacity_ratio', 'load_error', 'price_error'])
     df.index.name = 'date' # Need this modification to use in the Informer Architecture
     df.to_csv('data/ml_features_subset.csv')
