@@ -44,6 +44,13 @@ class DataScrapping:
         self.features['price_error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
         self.features['load_error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
 
+        self.features['N spikes 30'] = self.features['Price Error'].rolling(window=24, min_periods=1)\
+                                                    .apply(lambda x: np.sum(x > 30), raw=True).shift(1)
+        self.features['N spikes 45'] = self.features['Price Error'].rolling(window=24, min_periods=1)\
+                                                        .apply(lambda x: np.sum(x > 45), raw=True).shift(1)
+        self.features['N spikes 60'] = self.features['Price Error'].rolling(window=24, min_periods=1)\
+                                                        .apply(lambda x: np.sum(x > 60), raw=True).shift(1)
+
         self.features.dropna(inplace= True)
 
     def merge_features(self, new_feature:pd.Series, name:str):
@@ -372,6 +379,6 @@ if __name__ == '__main__':
     data = DataScrapping(start_date= 20160101, n_years= 5)
     data.update_features()
     # making a subset of data
-    df = data.get_list_features(['hdd', 'cdd', 'temperature', 'wind_speed', 'load_capacity_ratio', 'load_error', 'price_error'])
+    df = data.get_list_features(['hdd', 'cdd', 'temperature', 'wind_speed', 'load_capacity_ratio', 'load_error', 'price_error', 'N spikes 30', 'N spikes 45', 'N spikes 60'])
     df.index.name = 'date' # Need this modification to use in the Informer Architecture
     df.to_csv('data/ml_features_subset.csv')
