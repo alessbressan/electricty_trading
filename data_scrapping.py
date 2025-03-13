@@ -44,16 +44,16 @@ class DataScrapping:
         self.features['price_error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
         self.features['load_error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
 
-        self.features['N spikes 30'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['n_spikes_30'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                     .apply(lambda x: np.sum(x > 30), raw=True).shift(1)
-        self.features['N spikes 45'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['n_spikes_45'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(x > 45), raw=True).shift(1)
-        self.features['N spikes 60'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['n_spikes_60'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(x > 60), raw=True).shift(1)
         
-        self.features['Past DA Load Error'] = self.features['load_error'].rolling(window=24, min_periods=1)\
+        self.features['past_da_load_error'] = self.features['load_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(np.square(x)), raw=True).shift(1)
-        self.features['Past DA Price Error'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['past_da_price_error'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(np.square(x)), raw=True).shift(1)
 
         self.features.dropna(inplace= True)
@@ -384,6 +384,7 @@ if __name__ == '__main__':
     data = DataScrapping(start_date= 20160101, n_years= 5)
     data.update_features()
     # making a subset of data
-    df = data.get_list_features(['hdd', 'cdd', 'temperature', 'wind_speed', 'load_capacity_ratio', 'load_error', 'price_error', 'N spikes 30', 'N spikes 45', 'N spikes 60', 'Past DA Load Error', 'Past DA Price Error'])
+    df = data.get_list_features(['hdd', 'cdd', 'temperature', 'wind_speed', 'load_capacity_ratio', 'load_error', 'price_error',
+                                  'n_spikes_30', 'n_spikes_45', 'n_spikes_60', 'past_da_load_error', 'past_da_price_error'])
     df.index.name = 'date' # Need this modification to use in the Informer Architecture
     df.to_csv('data/ml_features_subset.csv')
