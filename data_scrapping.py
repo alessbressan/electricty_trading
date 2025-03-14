@@ -31,7 +31,7 @@ class DataScrapping:
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
 
         # Adding Load-Capacity Ratio
-        self.features['load_capacity_ratio'] = self.features['Load Forecast'] / self.features['Capacity']
+        self.features['load_capacity_ratio'] = self.features['Load Forecast'] / (self.features['Capacity'] + 1e-3)
 
         # Adding HDD and CDD
         print(self.features.columns)
