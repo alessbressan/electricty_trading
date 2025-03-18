@@ -8,6 +8,10 @@ import io
 import pandas as pd
 import numpy as np
 
+import warnings
+
+warnings.filterwarnings('ignore')
+
 class DataScrapping:
     def __init__(self, start_date:int, n_years:int):
         self.url = 'http://mis.nyiso.com/public/'
@@ -34,7 +38,6 @@ class DataScrapping:
         self.features['load_capacity_ratio'] = self.features['load_forecast'].shift(1) / (self.features['capacity'].shift(1) + 1e-3)
 
         # Adding HDD and CDD
-        print(self.features.columns)
         self.features['hdd'] = self.features.apply(lambda x: self.compute_HDD(temp= x['temperature']), axis= 1).shift(1)
         self.features['cdd'] = self.features.apply(lambda x: self.compute_CDD(temp= x['temperature']), axis= 1).shift(1)
 
@@ -42,6 +45,10 @@ class DataScrapping:
         # I think we need to shift 1 day backwards for the day ahead forecast since 
         self.features['price_error'] = self.features['rt_prices'] - self.features['da_prices'].shift(1)
         self.features['load_error'] = self.features['load_realized'] - self.features['load_forecast'].shift(1)
+        # Objective
+        self.features['spike_30'] = (self.features['price_error'] > 30).astype(int)
+        self.features['spike_45'] = (self.features['price_error'] > 45).astype(int)
+        self.features['spike_60'] = (self.features['price_error'] > 60).astype(int)
 
         # Past Spikes
         self.features['n_spikes_30'] = self.features['price_error'].rolling(window=24, min_periods=1)\
@@ -69,6 +76,7 @@ class DataScrapping:
         hol = pd.Series(holidays.country_holidays('US',  years=range(self.features.index.min().year,
                                                              self.features.index.max().year+1)))
         self.features['is_holiday'] = self.features.index.isin(hol.index).astype(int)
+
     def merge_features(self, new_feature:pd.Series, name:str):
         new_feature = new_feature.rename(name)
 
