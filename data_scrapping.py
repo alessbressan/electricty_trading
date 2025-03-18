@@ -1,7 +1,7 @@
 import openmeteo_requests
 import requests_cache
 from retry_requests import retry
-
+import holidays
 import requests
 import zipfile
 import io
@@ -22,28 +22,28 @@ class DataScrapping:
     
     def update_features(self):
         # Adding all RAW Data
-        self.merge_features(self.rt_prices(), name= 'RT Prices')
-        self.merge_features(self.da_prices(), name= 'DA Prices')
-        self.merge_features(self.load_realized(), name= 'Load Realized')
-        self.merge_features(self.load_forecast(), name= 'Load Forecast')
-        self.merge_features(self.capacity(), name= 'Capacity')
+        self.merge_features(self.rt_prices(), name= 'rt_prices')
+        self.merge_features(self.da_prices(), name= 'da_prices')
+        self.merge_features(self.load_realized(), name= 'load_realized')
+        self.merge_features(self.load_forecast(), name= 'load_forecast')
+        self.merge_features(self.capacity(), name= 'capacity')
         self.weather_forecast_api()
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
 
         # Adding Load-Capacity Ratio
-        self.features['load_capacity_ratio'] = self.features['Load Forecast'] / (self.features['Capacity'] + 1e-3)
+        self.features['load_capacity_ratio'] = self.features['load_forecast'].shift(1) / (self.features['capacity'].shift(1) + 1e-3)
 
         # Adding HDD and CDD
         print(self.features.columns)
-        self.features['hdd'] = self.features.apply(lambda x: self.compute_HDD(temp= x['temperature']), axis= 1)
-        self.features['cdd'] = self.features.apply(lambda x: self.compute_CDD(temp= x['temperature']), axis= 1)
+        self.features['hdd'] = self.features.apply(lambda x: self.compute_HDD(temp= x['temperature']), axis= 1).shift(1)
+        self.features['cdd'] = self.features.apply(lambda x: self.compute_CDD(temp= x['temperature']), axis= 1).shift(1)
 
         # Adding Forecast Error
         # I think we need to shift 1 day backwards for the day ahead forecast since 
-        # the time stamp is the DA Forecast for the next day, WAIT DOES THAT MEAN ALL OF OUR FORECASTED DATA MUST BE SHIFTED?
-        self.features['price_error'] = self.features['RT Prices'] - self.features['DA Prices'].shift(-1)
-        self.features['load_error'] = self.features['Load Realized'] - self.features['Load Forecast'].shift(-1)
+        self.features['price_error'] = self.features['rt_prices'] - self.features['da_prices'].shift(1)
+        self.features['load_error'] = self.features['load_realized'] - self.features['load_forecast'].shift(1)
 
+        # Past Spikes
         self.features['n_spikes_30'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                     .apply(lambda x: np.sum(x > 30), raw=True).shift(1)
         self.features['n_spikes_45'] = self.features['price_error'].rolling(window=24, min_periods=1)\
@@ -51,13 +51,24 @@ class DataScrapping:
         self.features['n_spikes_60'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(x > 60), raw=True).shift(1)
         
+        # Past Day-Ahead Error
         self.features['past_da_load_error'] = self.features['load_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(np.square(x)), raw=True).shift(1)
         self.features['past_da_price_error'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(np.square(x)), raw=True).shift(1)
+        
+        # Seasonality
+        self.features['is_weekend'] = (self.features.index.weekday >= 5).astype(int)
+        self.features['hour'] = self.features.index.hour
+        self.features['month'] = self.features.index.month
+        self.update_holidays()
 
         self.features.dropna(inplace= True)
 
+    def update_holidays(self):
+        hol = pd.Series(holidays.country_holidays('US',  years=range(self.features.index.min().year,
+                                                             self.features.index.max().year+1)))
+        self.features['is_holiday'] = self.features.index.isin(hol.index).astype(int)
     def merge_features(self, new_feature:pd.Series, name:str):
         new_feature = new_feature.rename(name)
 
@@ -381,10 +392,9 @@ class DataScrapping:
         return flows_60m['Positive Limit (MWH)']
 
 if __name__ == '__main__':
-    data = DataScrapping(start_date= 20160101, n_years= 8)
+    data = DataScrapping(start_date= 20160101, n_years= 6)
     data.update_features()
     # making a subset of data
-    df = data.get_list_features(['hdd', 'cdd', 'temperature', 'wind_speed', 'load_capacity_ratio', 'load_error', 'price_error',
-                                  'n_spikes_30', 'n_spikes_45', 'n_spikes_60', 'past_da_load_error', 'past_da_price_error'])
+    df = data.features
     df.index.name = 'date' # Need this modification to use in the Informer Architecture
     df.to_csv('data/ml_features_subset.csv')
