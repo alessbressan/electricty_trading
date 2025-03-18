@@ -29,7 +29,7 @@ def calc_loss_and_score(pred, target, metrics, pos_threshold = 0.5):
     pred = sigmoid(pred )
     
     #lossarr.append(ce_loss.item())
-    pred = (pred > pos_threshold).float()
+    pred = (pred > pos_threshold).int()
     correct = torch.sum(pred == target).item() 
     metrics['correct']  += correct
     total = target.size(0)   
@@ -44,7 +44,7 @@ def print_average(metrics):
     print('average loss : ' +str(np.mean(loss))  + 'average correct: ' + str(((100 * metrics['correct']  )/ metrics['total']) ))
  
 
-def test_model(model,test_loader,device):
+def test_model(model, test_loader, device, threshold):
     model.eval() 
     metrics = dict()
     metrics['loss']=list()
@@ -57,7 +57,7 @@ def test_model(model,test_loader,device):
             labels = labels.to(device=device, dtype=torch.int) 
             pred = model(inputs) 
             
-            calc_loss_and_score(pred, labels, metrics) 
+            calc_loss_and_score(pred, labels, metrics, threshold) 
     print_average(metrics)
 
 if __name__ == "__main__":
