@@ -51,11 +51,11 @@ class DataScrapping:
         self.features['spike_60'] = (self.features['price_error'] > 60).astype(int)
 
         # Past Spikes
-        self.features['n_spikes_30'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['past_spikes_30'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                     .apply(lambda x: np.sum(x > 30), raw=True).shift(1)
-        self.features['n_spikes_45'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['past_spikes_45'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(x > 45), raw=True).shift(1)
-        self.features['n_spikes_60'] = self.features['price_error'].rolling(window=24, min_periods=1)\
+        self.features['past_spikes_60'] = self.features['price_error'].rolling(window=24, min_periods=1)\
                                                         .apply(lambda x: np.sum(x > 60), raw=True).shift(1)
         
         # Past Day-Ahead Error
@@ -403,6 +403,10 @@ if __name__ == '__main__':
     data = DataScrapping(start_date= 20160101, n_years= 6)
     data.update_features()
     # making a subset of data
-    df = data.features
+    df = data.get_list_features(['spike_30', 'past_spikes_30', 'wind_speed',
+                                 'precipitation', 'hdd', 'cdd', 'past_da_load_error', 
+                                 'past_da_price_error', 'month', 'hour',
+                                 'is_weekend', 'is_holiday','load_capacity_ratio' ]
+                               )
     df.index.name = 'date' # Need this modification to use in the Informer Architecture
     df.to_csv('data/ml_features_subset.csv')
