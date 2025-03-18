@@ -62,7 +62,7 @@ def print_metrics(main_metrics_train,main_metrics_val,metrics, phase):
     return result 
 
 
-def train_model(dataloaders, model, optimizer, num_epochs=100, pos_threshold= 0.5): 
+def train_model(dataloaders, model, optimizer, device, num_epochs=100, pos_threshold= 0.5): 
  
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = 1e10
@@ -151,6 +151,7 @@ if __name__ == "__main__":
     model_normal_ce = train_model(dataloaders= dataloaders,
                                   model= model,
                                   optimizer= optimizer,
+                                  device = device,
                                   pos_threshold= pos_threshold,
                                   num_epochs= 20)
     torch.save(model.state_dict(), 'myModel')
