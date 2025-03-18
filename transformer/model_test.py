@@ -26,10 +26,10 @@ def calc_loss_and_score(pred, target, metrics, pos_threshold = 0.5):
     
     ce_loss = cross_entropy_loss(pred, target)
     metrics['loss'] .append( ce_loss.item() )
-    pred = sigmoid(pred )
+    pred = sigmoid(pred)
     
     #lossarr.append(ce_loss.item())
-    pred = (pred > pos_threshold).int()
+    # pred = (pred > pos_threshold).int()
     correct = torch.sum(pred == target).item() 
     metrics['correct']  += correct
     total = target.size(0)   
