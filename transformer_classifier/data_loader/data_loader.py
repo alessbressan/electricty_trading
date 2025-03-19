@@ -25,19 +25,34 @@ class DartDataset():
         self.X = (X - X.mean()) / (X.std() + 1e-8)
         self.Y = features.loc[:,target].astype(dtype=int).values
         
-        dataset = TensorDataset(torch.Tensor(self.X).to(device), torch.Tensor(self.Y).to(device))
-        self.dataloader = DataLoader(dataset, batch_size= batch_size, drop_last=True) 
+        x_train, x_temp, y_train, y_temp = train_test_split(self.X, self.Y, test_size=0.20)  
+        x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50)  
+        
+        self.train_set = TensorDataset(torch.Tensor(x_train).to(device), torch.Tensor(y_train).to(device))
+        self.val_set = TensorDataset(torch.Tensor(x_val).to(device), torch.Tensor(y_val).to(device))
+        self.test_set = TensorDataset(torch.Tensor(x_test).to(device), torch.Tensor(y_test).to(device))
+        
+        dataloaders = {
+            'train': DataLoader(self.train_set, batch_size=batch_size, shuffle=True),
+            'val': DataLoader(self.val_set, batch_size=batch_size, shuffle=True),
+            'test': DataLoader(self.test_set, batch_size=batch_size, shuffle=True)
+        }
+        self.dataloader = dataloaders 
     
     def getDataLoader(self): 
         return self.dataloader
     
     def getData(self):
-        return self.X, self.Y
+        return self.train_set, self.val_set, self.test_set
 
 
 
 class myDataLoader():
-    def __init__(self, batch_size) -> None:
+    def __init__(self, batch_size, flag= 'train') -> None:
+        assert flag in ['train', 'test', 'val']
+        type_map = {'train':0, 'val':1, 'test':2}
+        self.set_type = type_map[flag]
+
         self.batch_size = batch_size
         df_raw = pd.read_csv(os.path.join(root_path, data_path))
         cols_data = df_raw.columns[1:]
