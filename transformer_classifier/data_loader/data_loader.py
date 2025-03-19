@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import TensorDataset, Dataset, DataLoader
 import json
 import os
 
@@ -14,19 +14,16 @@ with open("config.json", "r") as file:
 root_path = config["root_path"]
 data_path = config["data_path"]
 
-class DartDataset(Dataset):
+class DartDataset(TensorDataset):
     def __init__(self, x, y, device)  :
         super().__init__()
         #file_out = pd.read_csv(fileName)
         #x = file_out.iloc[:,:-1].values
         #y = file_out.iloc[:,-1:].values 
-        self.X = torch.Tensor(x).type(torch.LongTensor).to(device)
-        self.Y = torch.Tensor(y).to(device)
-    def __len__(self):
-        return len(self.Y)
-    
-    def __getitem__(self, index): 
-        return self.X[index].unsqueeze(1), self.Y[index] 
+        self.dataset = TensorDataset(torch.Tensor(x).type(torch.FloatTensor).to(device), 
+                                torch.Tensor(y).to(device))
+    def get_dataset(self):
+        return self.dataset  # Return the dataset
     
 class DartDataLoader():
     def __init__(self, batch_size, target:str = 'spike_30', device= 'cuda')  :
@@ -42,8 +39,8 @@ class DartDataLoader():
         x_train, x_temp, y_train, y_temp = train_test_split(self.X, self.Y, test_size=0.20)  
         # x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50)  
         
-        self.train_set = DartDataset(x= x_train, y= y_train, device= device)
-        self.val_set = DartDataset(x= x_temp, y= y_temp, device= device)
+        self.train_set = DartDataset(x= x_train, y= y_train, device= device).get_dataset()
+        self.val_set = DartDataset(x= x_temp, y= y_temp, device= device).get_dataset()
         # self.test_set = DartDataset(x= x_test, y= y_test)
         
         dataloaders = {

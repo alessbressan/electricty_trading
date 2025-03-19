@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ExponentialLR 
 from models.model import Transformer 
-from data_loader.data_loader import DartDataset
+from data_loader.data_loader import DartDataLoader
 import numpy as np 
 
 import warnings
@@ -87,22 +87,22 @@ def train_model(dataloader, model, optimizer, criterion, scheduler, num_epochs=1
 
 if __name__ == "__main__":
     device= "cuda" if torch.cuda.is_available() else "cpu"
-    EPOCHS = 30
+    EPOCHS = 15
     BATCH_SIZE = 12
     LEARNING_RATE = 2.2e-6
     seq_len = 12
-    details = False
-    model = Transformer(seq_len, embed_size=12, nhead=2, dim_feedforward=1024, dropout=0, batch_size= BATCH_SIZE,details= details, device=device)
+    details = True
+    model = Transformer(seq_len, embed_size=12, nhead=2, dim_feedforward=1024, dropout=0, batch_size= BATCH_SIZE, details= details, device=device)
     model.to(device)
     model.train()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.AdamW(model.parameters(), lr= LEARNING_RATE)
     scheduler = ExponentialLR(optimizer, gamma=0.9)
-    dataset = DartDataset(batch_size= BATCH_SIZE)
+    dataset = DartDataLoader(batch_size= BATCH_SIZE, device= device)
     dataloader = dataset.getDataLoader()
 
     for epoch in range(EPOCHS):
-        for xx, yy in dataloader:
+        for xx, yy in dataloader['train']:
             optimizer.zero_grad()
             out = model(xx)
             loss = criterion(out, yy.long())
@@ -110,3 +110,5 @@ if __name__ == "__main__":
             optimizer.step()
         scheduler.step()
         print(f"Epoch {epoch+1}/{EPOCHS}: Loss={loss}")
+
+    torch.save(model.state_dict(), 'myModel')
