@@ -15,13 +15,13 @@ root_path = config["root_path"]
 data_path = config["data_path"]
 
 class DartDataset(Dataset):
-    def __init__(self, x, y)  :
+    def __init__(self, x, y, device)  :
         super().__init__()
         #file_out = pd.read_csv(fileName)
         #x = file_out.iloc[:,:-1].values
         #y = file_out.iloc[:,-1:].values 
-        self.X = torch.tensor(x)
-        self.Y = torch.tensor(y)
+        self.X = torch.Tensor(x).type(torch.LongTensor).to(device)
+        self.Y = torch.Tensor(y).to(device)
     def __len__(self):
         return len(self.Y)
     
@@ -57,7 +57,7 @@ class DartDataLoader():
         return self.dataloader
     
     def getData(self):
-        return self.train_set, self.val_set, self.test_set
+        return self.train_set, self.val_set
 
 
 
