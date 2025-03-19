@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch 
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 import json
 import os
 
@@ -14,19 +14,23 @@ with open("config.json", "r") as file:
 root_path = config["root_path"]
 data_path = config["data_path"]
 
-class DartDataset(Dataset):
-    def __init__(self,x,y)  :
+class DartDataset():
+    def __init__(self, batch_size, target:str = 'spike_30', device= 'cpu')  :
         super().__init__()
-        # file_out = pd.read_csv(os.path.join(root_path, data_path))
-        # x = file_out.iloc[:,:-1].values
-        # y = file_out.iloc[:,-1:].values 
-        self.X = torch.tensor(x)
-        self.Y = torch.tensor(y)
-    def __len__(self):
-        return len(self.Y)
+        df_raw = pd.read_csv(os.path.join(root_path, data_path))
+        cols_data = df_raw.columns[1:]
+        features = df_raw[cols_data]
+
+        X = features.iloc[:,:-1].values # removes date value
+        X = (X - X.mean()) / (X.std() + 1e-8)
+        Y = features.loc[:,target].astype(dtype=int).values
+        
+        dataset = TensorDataset(torch.Tensor(X).to(device), torch.Tensor(Y).to(device))
+        self.dataloader = DataLoader(dataset, batch_size= batch_size, drop_last=True) 
     
-    def __getitem__(self, index): 
-        return self.X[index].unsqueeze(1), self.Y[index] 
+    def getDataLoader(self): 
+        return self.dataloader
+
     
 
 class MyTestDataLoader():
@@ -54,7 +58,7 @@ class myDataLoader():
 
         x_train = file_out_train.iloc[:,:-1].values
         y_train = file_out_train.iloc[:,-1:].astype(dtype=int).values 
-        x_train, x_val, y_train, y_val = train_test_split(x_train,y_train,test_size=0.15 )  
+        x_train, x_val, y_train, y_val = train_test_split(x_train,y_train,test_size=0.15)  
 
         #print("x_train shape on batch size =  " + str(x_train.shape ))
         #print('x_val shape on batch size =  ' + str(x_val.shape))
