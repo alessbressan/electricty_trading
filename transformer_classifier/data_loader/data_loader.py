@@ -42,8 +42,8 @@ class DartDataLoader():
         x_train, x_temp, y_train, y_temp = train_test_split(self.X, self.Y, test_size=0.20)  
         # x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50)  
         
-        self.train_set = DartDataset(x= x_train, y= y_train)
-        self.val_set = DartDataset(x= x_temp, y= y_temp)
+        self.train_set = DartDataset(x= x_train, y= y_train, device= device)
+        self.val_set = DartDataset(x= x_temp, y= y_temp, device= device)
         # self.test_set = DartDataset(x= x_test, y= y_test)
         
         dataloaders = {
