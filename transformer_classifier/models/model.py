@@ -16,7 +16,7 @@ class Transformer(nn.Module):
                  conv1d_kernel_size = 3,
                  n_classes = 2,
                  batch_size = 1,
-                 device = "cpu",
+                 device = "cuda",
                  details = True):
         super(Transformer, self).__init__()
 

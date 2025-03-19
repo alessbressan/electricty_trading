@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch 
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 import json
 import os
 
@@ -14,7 +14,21 @@ with open("config.json", "r") as file:
 root_path = config["root_path"]
 data_path = config["data_path"]
 
-class DartDataset():
+class DartDataset(Dataset):
+    def __init__(self, x, y)  :
+        super().__init__()
+        #file_out = pd.read_csv(fileName)
+        #x = file_out.iloc[:,:-1].values
+        #y = file_out.iloc[:,-1:].values 
+        self.X = torch.tensor(x)
+        self.Y = torch.tensor(y)
+    def __len__(self):
+        return len(self.Y)
+    
+    def __getitem__(self, index): 
+        return self.X[index].unsqueeze(1), self.Y[index] 
+    
+class DartDataLoader():
     def __init__(self, batch_size, target:str = 'spike_30', device= 'cuda')  :
         super().__init__()
         df_raw = pd.read_csv(os.path.join(root_path, data_path))
@@ -26,16 +40,16 @@ class DartDataset():
         self.Y = features.loc[:,target].astype(dtype=int).values
         
         x_train, x_temp, y_train, y_temp = train_test_split(self.X, self.Y, test_size=0.20)  
-        x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50)  
+        # x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50)  
         
-        self.train_set = TensorDataset(torch.Tensor(x_train).to(device), torch.Tensor(y_train).to(device))
-        self.val_set = TensorDataset(torch.Tensor(x_val).to(device), torch.Tensor(y_val).to(device))
-        self.test_set = TensorDataset(torch.Tensor(x_test).to(device), torch.Tensor(y_test).to(device))
+        self.train_set = DartDataset(x= x_train, y= y_train)
+        self.val_set = DartDataset(x= x_temp, y= y_temp)
+        # self.test_set = DartDataset(x= x_test, y= y_test)
         
         dataloaders = {
             'train': DataLoader(self.train_set, batch_size=batch_size, shuffle=True),
             'val': DataLoader(self.val_set, batch_size=batch_size, shuffle=True),
-            'test': DataLoader(self.test_set, batch_size=batch_size, shuffle=True)
+            # 'test': DataLoader(self.test_set, batch_size=batch_size, shuffle=True)
         }
         self.dataloader = dataloaders 
     
