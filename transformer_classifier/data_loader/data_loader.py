@@ -74,7 +74,7 @@ class DartDataLoader:
         target = target.values  # shape: (n_timestamps,)
         
         # Create the dataset using the sliding window approach
-        dataset = DartDataset(data=data_values, target= target, seq_len=self.seq_len)
+        dataset = DartDataset(data=data_values, target= target, seq_len=self.seq_len, device= self.device)
         
         # For time series, a sequential split is often preferred over a random split.
         train_size = int(len(dataset) * (1 - self.test_size))

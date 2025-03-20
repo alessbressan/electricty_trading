@@ -88,11 +88,11 @@ def train_model(dataloader, model, optimizer, criterion, scheduler, num_epochs=1
 if __name__ == "__main__":
     device= "cuda" if torch.cuda.is_available() else "cpu"
     EPOCHS = 15
-    BATCH_SIZE = 3
+    BATCH_SIZE = 1
     LEARNING_RATE = 2.2e-5
     seq_len = 12
-    details = True
-    model = Transformer(seq_len, embed_size=12, nhead=2, dim_feedforward=1024, dropout=0, details= details, device=device)
+    details = False
+    model = Transformer(seq_len, embed_size=12, nhead=4, dim_feedforward=2048, dropout=0, details= details, device=device)
     model.to(device)
     model.train()
     criterion = nn.CrossEntropyLoss()
@@ -100,6 +100,9 @@ if __name__ == "__main__":
     scheduler = ExponentialLR(optimizer, gamma=0.9)
     dataset = DartDataLoader(batch_size= BATCH_SIZE, device= device)
     dataloader = dataset.dataloaders
+
+    print('training size: ', dataloader['train'].__len__())
+    print('testing size: ', dataloader['test'].__len__())
 
     for epoch in range(EPOCHS):
         for xx, yy in dataloader['train']:
