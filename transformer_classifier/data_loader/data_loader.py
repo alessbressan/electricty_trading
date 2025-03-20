@@ -15,16 +15,18 @@ root_path = config["root_path"]
 data_path = config["data_path"]
 
 class DartDataset(Dataset):
-    def __init__(self, data, target, seq_len=10):
+    def __init__(self, data, target, seq_len=10, device= 'cuda'):
         """
         data: NumPy array of shape (n_timestamps, n_features)
         target: NumPy array of shape (n_timestamps,)
         seq_len: Number of consecutive timestamps to include in each sample
         """
         self.data = data
-        self.target = target
         self.seq_len = seq_len
         self.samples = []
+
+        data = torch.tensor(data, dtype=torch.float32, device=device)
+        target = torch.tensor(target, dtype=torch.float32, device=device)
         
         # Create samples using a sliding window approach
         for i in range(len(data) - seq_len):
@@ -36,11 +38,7 @@ class DartDataset(Dataset):
         return len(self.samples)
     
     def __getitem__(self, index):
-        x, y = self.samples[index]
-        # Convert to torch tensors
-        x = torch.tensor(x, dtype=torch.float32)
-        y = torch.tensor(y, dtype=torch.float32)
-        return x, y
+        return self.samples[index]
 
 class DartDataLoader:
     def __init__(self, target_column:str = 'spike_30', seq_len=12, batch_size=10, test_size=0.2, device='cuda'):
