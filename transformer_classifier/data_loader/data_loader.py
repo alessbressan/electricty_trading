@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import torch 
-from torch.utils.data import TensorDataset, Dataset, DataLoader
+from torch.utils.data import Subset, Dataset, DataLoader
 import json
 import os
 
@@ -14,48 +14,85 @@ with open("config.json", "r") as file:
 root_path = config["root_path"]
 data_path = config["data_path"]
 
-class DartDataset(TensorDataset):
-    def __init__(self, x, y, device)  :
-        super().__init__()
-        #file_out = pd.read_csv(fileName)
-        #x = file_out.iloc[:,:-1].values
-        #y = file_out.iloc[:,-1:].values 
-        self.dataset = TensorDataset(torch.Tensor(x).type(torch.FloatTensor).to(device), 
-                                torch.Tensor(y).to(device))
-    def get_dataset(self):
-        return self.dataset  # Return the dataset
+class DartDataset(Dataset):
+    def __init__(self, data, target, seq_len=10):
+        """
+        data: NumPy array of shape (n_timestamps, n_features)
+        target: NumPy array of shape (n_timestamps,)
+        seq_len: Number of consecutive timestamps to include in each sample
+        """
+        self.data = data
+        self.target = target
+        self.seq_len = seq_len
+        self.samples = []
+        
+        # Create samples using a sliding window approach
+        for i in range(len(data) - seq_len):
+            x = data[i:i+seq_len]
+            y = target[i+seq_len]  # target is the value after the sequence
+            self.samples.append((x, y))
     
-class DartDataLoader():
-    def __init__(self, batch_size, target:str = 'spike_30', device= 'cuda')  :
-        super().__init__()
+    def __len__(self):
+        return len(self.samples)
+    
+    def __getitem__(self, index):
+        x, y = self.samples[index]
+        # Convert to torch tensors
+        x = torch.tensor(x, dtype=torch.float32)
+        y = torch.tensor(y, dtype=torch.float32)
+        return x, y
+
+class DartDataLoader:
+    def __init__(self, target_column:str = 'spike_30', seq_len=12, batch_size=10, test_size=0.2, device='cuda'):
+        """
+        csv_path: Path to the CSV file with time series data.
+        target_column: Name of the target column.
+        seq_len: Length of the sequence window.
+        batch_size: Batch size for the data loaders.
+        test_size: Fraction of data to reserve for testing.
+        device: Device for tensor allocation.
+        """
+        self.target_column = target_column
+        self.seq_len = seq_len
+        self.batch_size = batch_size
+        self.test_size = test_size
+        self.device = device
+        
+        # Initialize the loaders by preparing the data
+        self.dataloaders = self._prepare_data_loaders()
+    
+    def _prepare_data_loaders(self):
+        # Load the raw CSV data
         df_raw = pd.read_csv(os.path.join(root_path, data_path))
-        cols_data = df_raw.columns[1:]
-        features = df_raw[cols_data]
+        df = df_raw.iloc[:, 1:].copy()
+        target = df.loc[:, self.target_column]
+        df.drop(columns= self.target_column, inplace= True)
 
-        X = features.iloc[:,:-1].values # removes date value
-        self.X = (X - X.mean()) / (X.std() + 1e-8)
-        self.Y = features.loc[:,target].astype(dtype=int).values
+        # Standardize features
+        df_standardized = (df - df.mean()) / (df.std() + 1e-8)
         
-        x_train, x_temp, y_train, y_temp = train_test_split(self.X, self.Y, test_size=0.20)  
-        # x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50)  
+        # Convert DataFrame to NumPy arrays
+        data_values = df_standardized.values  # shape: (n_timestamps, n_features)
+        target = target.values  # shape: (n_timestamps,)
         
-        self.train_set = DartDataset(x= x_train, y= y_train, device= device).get_dataset()
-        self.val_set = DartDataset(x= x_temp, y= y_temp, device= device).get_dataset()
-        # self.test_set = DartDataset(x= x_test, y= y_test)
+        # Create the dataset using the sliding window approach
+        dataset = DartDataset(data=data_values, target= target, seq_len=self.seq_len)
         
+        # For time series, a sequential split is often preferred over a random split.
+        train_size = int(len(dataset) * (1 - self.test_size))
+        train_dataset = Subset(dataset, list(range(train_size)))
+        test_dataset = Subset(dataset, list(range(train_size, len(dataset))))
+        
+        # Create DataLoaders
         dataloaders = {
-            'train': DataLoader(self.train_set, batch_size=batch_size, shuffle=True),
-            'val': DataLoader(self.val_set, batch_size=batch_size, shuffle=True),
-            # 'test': DataLoader(self.test_set, batch_size=batch_size, shuffle=True)
+            'train' : DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True),
+            'test' : DataLoader(test_dataset, batch_size=self.batch_size, shuffle=False, drop_last=True),
         }
-        self.dataloader = dataloaders 
+        return dataloaders
     
-    def getDataLoader(self): 
-        return self.dataloader
-    
-    def getData(self):
-        return self.train_set, self.val_set
-
+    def get_loaders(self):
+        """Returns the training and testing data loaders."""
+        return self.train_loader, self.test_loader
 
 
 class myDataLoader():
