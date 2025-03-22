@@ -32,6 +32,7 @@ if __name__ == "__main__":
     print('testing size: ', dataloader['test'].__len__())
     all_loss = []
     test_loss = []
+
     for epoch in tqdm(range(EPOCHS)):
         model.train()
         for batch, (xx, yy) in enumerate(dataloader['train']):

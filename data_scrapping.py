@@ -46,6 +46,7 @@ class DataScrapping:
         # I think we need to shift 1 day backwards for the day ahead forecast since 
         self.features['price_error'] = self.features['rt_prices'] - self.features['da_prices'].shift(24)
         self.features['load_error'] = self.features['load_realized'] - self.features['load_forecast'].shift(24)
+        
         # Objective
         self.features['spike_30'] = (self.features['price_error'] > 30).astype(int)
         self.features['spike_45'] = (self.features['price_error'] > 45).astype(int)
