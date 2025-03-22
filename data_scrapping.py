@@ -35,16 +35,17 @@ class DataScrapping:
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
 
         # Adding Load-Capacity Ratio
-        self.features['load_capacity_ratio'] = self.features['load_forecast'].shift(1) / (self.features['capacity'].shift(1) + 1e-3)
-
+        self.features['load_capacity_ratio'] = self.features['load_forecast'] / (self.features['capacity'] + 1e-3)
+        self.features['load_capacity_ratio'] = self.features['load_capacity_ratio'].mask(self.features['capacity'] == 0, np.nan)
+        
         # Adding HDD and CDD
-        self.features['hdd'] = self.features.apply(lambda x: self.compute_HDD(temp= x['temperature']), axis= 1).shift(1)
-        self.features['cdd'] = self.features.apply(lambda x: self.compute_CDD(temp= x['temperature']), axis= 1).shift(1)
+        self.features['hdd'] = self.features.apply(lambda x: self.compute_HDD(temp= x['temperature']), axis= 1)
+        self.features['cdd'] = self.features.apply(lambda x: self.compute_CDD(temp= x['temperature']), axis= 1)
 
         # Adding Forecast Error
         # I think we need to shift 1 day backwards for the day ahead forecast since 
-        self.features['price_error'] = self.features['rt_prices'] - self.features['da_prices'].shift(1)
-        self.features['load_error'] = self.features['load_realized'] - self.features['load_forecast'].shift(1)
+        self.features['price_error'] = self.features['rt_prices'] - self.features['da_prices'].shift(24)
+        self.features['load_error'] = self.features['load_realized'] - self.features['load_forecast'].shift(24)
         # Objective
         self.features['spike_30'] = (self.features['price_error'] > 30).astype(int)
         self.features['spike_45'] = (self.features['price_error'] > 45).astype(int)
@@ -400,7 +401,7 @@ class DataScrapping:
         return flows_60m['Positive Limit (MWH)']
 
 if __name__ == '__main__':
-    data = DataScrapping(start_date= 20160101, n_years= 6)
+    data = DataScrapping(start_date= 20160101, n_years= 8)
     data.update_features()
     # making a subset of data
     df = data.get_list_features(['spike_30', 'past_spikes_30', 'wind_speed',

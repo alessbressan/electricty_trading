@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import Subset, Dataset, DataLoader
 import json
 import os
+from utils.tools import standardize_data
 
 from sklearn.model_selection import train_test_split
 
@@ -15,7 +16,7 @@ root_path = config["root_path"]
 data_path = config["data_path"]
 
 class DartDataset(Dataset):
-    def __init__(self, data, target, seq_len=10, device= 'cuda'):
+    def __init__(self, data, target, seq_len=12, device= 'cuda'):
         """
         data: NumPy array of shape (n_timestamps, n_features)
         target: NumPy array of shape (n_timestamps,)
@@ -66,11 +67,16 @@ class DartDataLoader:
         target = df.loc[:, self.target_column]
         df.drop(columns= self.target_column, inplace= True)
 
+        # deleted 'wind_speed' and 'precipitation'
+        gaussian = []
+        uniform = ['is_weekend', 'is_holiday', 'hour', 'month']
+        skewed = ['hdd', 'cdd', 'past_spikes_30', 'load_capacity_ratio', 'past_da_load_error', 'past_da_price_error']
+
         # Standardize features
-        df_standardized = (df - df.mean()) / (df.std() + 1e-8)
+        df = standardize_data(df, gaussian, uniform, skewed)
         
         # Convert DataFrame to NumPy arrays
-        data_values = df_standardized.values  # shape: (n_timestamps, n_features)
+        data_values = df.values  # shape: (n_timestamps, n_features)
         target = target.values  # shape: (n_timestamps,)
         
         # Create the dataset using the sliding window approach
@@ -92,47 +98,3 @@ class DartDataLoader:
         """Returns the training and testing data loaders."""
         return self.train_loader, self.test_loader
 
-
-class myDataLoader():
-    def __init__(self, batch_size, flag= 'train') -> None:
-        assert flag in ['train', 'test', 'val']
-        type_map = {'train':0, 'val':1, 'test':2}
-        self.set_type = type_map[flag]
-
-        self.batch_size = batch_size
-        df_raw = pd.read_csv(os.path.join(root_path, data_path))
-        cols_data = df_raw.columns[1:]
-        file_out_train = df_raw[cols_data]
-
-        x_train = file_out_train.iloc[:,:-1].values
-        y_train = file_out_train.iloc[:,-1:].astype(dtype=int).values 
-        x_train, x_val, y_train, y_val = train_test_split(x_train,y_train,test_size=0.15)  
-
-        #print("x_train shape on batch size =  " + str(x_train.shape ))
-        #print('x_val shape on batch size =  ' + str(x_val.shape))
-        #print('y_train shape on batch size =  '+ str(y_train.shape ))
-        #print('y_val shape on batch size =  ' + str( y_val.shape) )
-
-        train_set= DartDataset(x= x_train, y= y_train) 
-
-        val_set= DartDataset(x= x_val, y= y_val) 
-
-        dataloaders = {
-            'train': DataLoader(train_set, batch_size=batch_size, shuffle=True,  ),
-            'val': DataLoader(val_set, batch_size=batch_size, shuffle=True,  )
-        }
-        self.dataloaders = dataloaders
-        
-
-    def getDataLoader(self): 
-        return self.dataloaders
- 
-
-if __name__ == "__main__":
-    data = myDataLoader(7)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    df = data.getDataLoader()
-    for inputs, labels in df['train']:
-        inputs = inputs.to(device=device, dtype=torch.float)
-        labels = labels.to(device=device, dtype=torch.int)
-        print(inputs)
