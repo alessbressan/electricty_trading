@@ -46,12 +46,14 @@ class Transformer(nn.Module):
 
         # classification
         self.conv_out = nn.Conv1d(embed_size, c_out, kernel_size=3, padding=1)
-        self.linear = nn.Linear(c_out * seq_len, n_classes)
-        self.softmax = nn.Softmax(dim=1)
+        self.linear = nn.Linear(c_out * seq_len, embed_size)
+        self.linear_softmax = nn.Linear(embed_size, n_classes)
+        self.softmax = nn.Softmax()
 
     def forward(self, x):
         # x shape: (batch_size, seq_len)
         if self.details: print('Input shape:', x.shape)
+        src_mask = self._generate_square_subsequent_mask().to(device= self.device)
 
         # input embedding
         x = self.input_embedding(x)  # Shape: (batch_size, seq_len, embed_size)
@@ -62,7 +64,7 @@ class Transformer(nn.Module):
         if self.details: print('After positional encoding:', x.shape)
 
         # transformer encoder layer
-        x = self.transformer_encoder(x)  # Shape: (batch_size, seq_len, embed_size)
+        x = self.transformer_encoder(x, src_mask= src_mask)  # Shape: (batch_size, seq_len, embed_size)
         if self.details: print('After transformer encoder:', x.shape)
 
         # classification
@@ -71,10 +73,16 @@ class Transformer(nn.Module):
         if self.details: print('After convolution layer:', x.shape)
 
         x = x.view(x.size(0), -1)
-        x = self.linear(x)  # Shape: (batch_size, n_classes)
-        x = self.softmax(x)  # Shape: (batch_size, n_classes)
+        if self.details: print('After view:', x.shape)
 
+        x = self.linear(x)  # Shape: (batch_size, n_classes)
+        if self.details: print('After linear layer:', x.shape)
+
+        x = F.relu(x) 
+
+        x = self.linear_softmax(x)
         if self.details: print('After classification:', x.shape)
+        # x = self.softmax(x)  # Shape: (batch_size, n_classes)
         return x
         
     # Function Copied from PyTorch Library to create upper-triangular source mask
