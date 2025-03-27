@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torchmetrics import ConfusionMatrix
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -43,6 +44,11 @@ def visualization(all_preds:list, all_labels:list, all_probs:list):
     conf_matrix = confmat(all_preds, all_labels)
 
     conf_matrix_np = conf_matrix.cpu().numpy()
+
+    metrics = calculate_metrics(conf_matrix)
+    for class_id, scores in metrics.items():
+        print(f"Class {class_id}: Precision = {scores['Precision']:.2f}, Recall = {scores['Recall']:.2f}, F1-score = {scores['F1-score']:.2f}")
+
     plt.figure(figsize=(12, 5))
 
     # Subplot 1: Confusion Matrix
@@ -81,3 +87,44 @@ def loss_plot(train_loss:list, val_loss:list ):
 
     # Show the plot
     plt.show()
+
+def calculate_metrics(conf_matrix):
+    """
+    Calculate precision, recall, and F1-score from a confusion matrix.
+    """
+    num_classes = conf_matrix.shape[0]
+    metrics = {}
+    
+    for i in range(num_classes):
+        tp = conf_matrix[i, i]  # True positives
+        fp = conf_matrix[:, i].sum() - tp  # False positives
+        fn = conf_matrix[i, :].sum() - tp  # False negatives
+        
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        
+        metrics[i] = {
+            "Precision": precision,
+            "Recall": recall,
+            "F1-score": f1_score
+        }
+    
+    return metrics
+
+def custom_prediction(out, threshold=0.5):
+    """
+    Applies a threshold to class 1 probability before making a prediction.
+    """
+    probs = F.softmax(out, dim=1)  # Convert logits to probabilities
+    class_0_probs = probs[:, 0]    # Probabilities of class 0
+    class_1_probs = probs[:, 1]    # Probabilities of class 1
+
+    # Create prediction tensor based on conditions
+    preds = torch.where(
+        class_1_probs > class_0_probs,      # If P(class_1) > P(class_0)
+        (class_1_probs >= threshold).long(), # Apply threshold (1 if above, 0 otherwise)
+        torch.zeros_like(class_1_probs, dtype=torch.long) # Else predict 0
+    )
+
+    return preds

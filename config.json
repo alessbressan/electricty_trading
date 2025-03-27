@@ -1,4 +1,4 @@
 {
     "root_path" : "./data/",
-    "data_path" : "ml_features_subset.csv"
+    "data_path" : "ml_features.csv"
 }

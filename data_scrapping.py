@@ -35,7 +35,7 @@ class DataScrapping:
         self.features = pd.merge(self.features, self.weather_features, how='left', left_index= True, right_index= True)
 
         # Adding Load-Capacity Ratio
-        self.features['load_capacity_ratio'] = self.features['load_forecast'] / (self.features['capacity'] + 1e-3)
+        self.features['load_capacity_ratio'] = self.features['load_forecast'] / (self.features['capacity'] + 1e-8)
         self.features['load_capacity_ratio'] = self.features['load_capacity_ratio'].mask(self.features['capacity'] == 0, np.nan)
         
         # Adding HDD and CDD
@@ -405,7 +405,11 @@ if __name__ == '__main__':
     data = DataScrapping(start_date= 20160101, n_years= 8)
     data.update_features()
     # making a subset of data
-    df = data.get_list_features(['spike_30', 'past_spikes_30', 'wind_speed',
+    df = data.features
+    df.index.name = 'date' # Need this modification to use in the Informer Architecture
+    df.to_csv('data/ml_features.csv')
+    
+    df = data.get_list_features(['spike_45', 'past_spikes_30', 'past_spikes_45', 'past_spikes_60' 'wind_speed',
                                  'precipitation', 'hdd', 'cdd', 'past_da_load_error', 
                                  'past_da_price_error', 'month', 'hour',
                                  'is_weekend', 'is_holiday','load_capacity_ratio' ]

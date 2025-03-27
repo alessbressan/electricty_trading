@@ -70,7 +70,8 @@ class DartDataLoader:
         # deleted 'wind_speed' and 'precipitation'
         gaussian = []
         uniform = ['is_weekend', 'is_holiday', 'hour', 'month']
-        skewed = ['hdd', 'cdd', 'past_spikes_30', 'load_capacity_ratio', 'past_da_load_error', 'past_da_price_error']
+        skewed = ['hdd', 'cdd', 'past_spikes_30', 'past_spikes_45', 'load_capacity_ratio', 'past_da_load_error', 'past_da_price_error',
+                  'wind_speed']
 
         # Standardize features
         df = standardize_data(df, gaussian, uniform, skewed)
