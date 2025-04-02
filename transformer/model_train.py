@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 if __name__ == "__main__":
     device= "cuda" if torch.cuda.is_available() else "cpu"
     EPOCHS = 30
-    BATCH_SIZE = 2
+    BATCH_SIZE = 20
     LEARNING_RATE = 6.6e-6
     THRESHOLD = 0.5
     seq_len = 25
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     model = Transformer(seq_len=seq_len, embed_size=12, c_out= 128, nhead=4,
                         dim_feedforward=2048, dropout=0.05, details= details, device=device)
     model.to(device)
-    class_weights = torch.tensor([0.1, 1.4])
+    class_weights = torch.tensor([0.5, 20])
     criterion = nn.CrossEntropyLoss(weight= class_weights)
     optimizer = optim.SGD(model.parameters(), lr= LEARNING_RATE, momentum=0.9)
     scheduler = ExponentialLR(optimizer, gamma=0.9)

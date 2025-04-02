@@ -14,6 +14,8 @@ class Transformer(nn.Module):
                  dropout = 0.1,
                  c_out = 32,
                  conv1d_kernel_size = 3,
+                 d_model_class = 512,
+                 n_hidden_layers = 4,
                  n_classes = 2,
                  device = "cuda",
                  details = True):
@@ -46,9 +48,17 @@ class Transformer(nn.Module):
 
         # classification
         self.conv_out = nn.Conv1d(embed_size, c_out, kernel_size=3, padding=1)
-        self.linear = nn.Linear(c_out * seq_len, embed_size)
-        self.linear_softmax = nn.Linear(embed_size, n_classes)
+        self.input_layer = nn.Linear(c_out * seq_len, d_model_class)
+
+        hidden_dims = [d_model_class // (2 ** i) for i in range(1, n_hidden_layers + 1)]  # [d/2, d/4, d/8, d/16]
+        self.hidden_layers = nn.ModuleList(
+            [nn.Linear(in_dim, out_dim) for in_dim, out_dim in zip([d_model_class] + hidden_dims[:-1], hidden_dims)]
+        )
+        self.output_layer = nn.Linear(hidden_dims[-1], n_classes)
+
         self.softmax = nn.Softmax()
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
         # x shape: (batch_size, seq_len)
@@ -75,12 +85,16 @@ class Transformer(nn.Module):
         x = x.view(x.size(0), -1)
         if self.details: print('After view:', x.shape)
 
-        x = self.linear(x)  # Shape: (batch_size, n_classes)
-        if self.details: print('After linear layer:', x.shape)
+        x = self.input_layer(x)  # Shape: (batch_size, d_model_class)
+        if self.details: print('After input layer:', x.shape)
 
-        x = F.relu(x) 
+        for layer in self.hidden_layers:
+            x = layer(x)
+            x = self.relu(x)
+            x = self.dropout(x)
+            if self.details: print('After hidden layer:', x.shape)
 
-        x = self.linear_softmax(x)
+        x = self.output_layer(x)
         if self.details: print('After classification:', x.shape)
         # x = self.softmax(x)  # Shape: (batch_size, n_classes)
         return x
