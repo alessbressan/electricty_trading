@@ -23,7 +23,7 @@ if __name__ == "__main__":
     model.to(device)
     class_weights = torch.tensor([0.1, 0.9]).float()
     criterion = nn.CrossEntropyLoss(weight= class_weights)
-    optimizer = optim.Adam(model.parameters(), lr= LEARNING_RATE)
+    optimizer = optim.AdamW(model.parameters(), lr= LEARNING_RATE)
     scheduler = ExponentialLR(optimizer, gamma=0.9)
     dataset = DartDataLoader(batch_size= BATCH_SIZE, seq_len= seq_len, device= device)
     dataloader = dataset.dataloaders

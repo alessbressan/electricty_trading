@@ -19,7 +19,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 EPOCHS = 15
 BATCH_SIZE = 1
 LEARNING_RATE = 2.2e-6
-THRESHOLD = 0.5
+THRESHOLD = 0.55
 
 seq_len = 25
 details = False
@@ -28,7 +28,7 @@ details = False
 model = Transformer(seq_len=seq_len, embed_size=12, nhead=4,
                     dim_feedforward=2048, dropout=0.04, details= details, device=device)
 model.to(device)
-model.load_state_dict(torch.load('long_runtime_model', weights_only=True))
+model.load_state_dict(torch.load('transformer_v0', weights_only=True))
 model.eval()  # Set model to evaluation mode
 
 # Loss and optimizer
