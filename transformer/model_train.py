@@ -44,10 +44,7 @@ if __name__ == "__main__":
 
         scheduler.step()
         all_loss.append(loss.item())
-
-
-        # print(f"Epoch {epoch+1}/{EPOCHS}: Training Loss={loss.item()}")
     
-    torch.save(model.state_dict(), 'myModel')
+    torch.save(model.state_dict(), 'transformer_v1')
 
     loss_plot(train_loss= all_loss, val_loss= test_loss)
