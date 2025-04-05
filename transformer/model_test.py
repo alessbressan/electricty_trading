@@ -28,7 +28,7 @@ details = False
 model = Transformer(seq_len=seq_len, embed_size=12, nhead=4,
                     dim_feedforward=2048, dropout=0.04, details= details, device=device)
 model.to(device)
-model.load_state_dict(torch.load('myModel', weights_only=True))
+model.load_state_dict(torch.load('myModel1', weights_only=True))
 model.eval()  # Set model to evaluation mode
 
 # Loss and optimizer
@@ -75,6 +75,9 @@ conf_matrix_np = conf_matrix.cpu().numpy()
 # Print confusion matrix values
 print("Confusion Matrix:\n", conf_matrix_np)
 print(val_preds.cpu().numpy())
+np.savetxt("trans_predictions.csv", val_preds.cpu().numpy(), delimiter=",")
+np.savetxt("trans_actual.csv", val_labels.cpu().numpy(), delimiter=",")
+
 idx = np.where((val_preds.cpu().numpy() > 0) & (~np.isnan(val_preds.cpu().numpy())))[0]
 print(f"Average Probability: {np.mean(val_probs[idx])}")
 

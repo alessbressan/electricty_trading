@@ -158,7 +158,7 @@ class Informer(nn.Module):
     def forward(self, x):
         # x shape: (batch_size, seq_len)
         if self.details: print('Input shape:', x.shape)
-        src_mask = self._generate_square_subsequent_mask().to(device= self.device)
+        # src_mask = self._generate_square_subsequent_mask().to(device= self.device)
 
         # input embedding
         x = self.input_embedding(x)  # Shape: (batch_size, seq_len, embed_size)
@@ -169,7 +169,7 @@ class Informer(nn.Module):
         if self.details: print('After positional encoding:', x.shape)
 
         # transformer encoder layer
-        x = self.transformer_encoder(x, src_mask= src_mask)  # Shape: (batch_size, seq_len, embed_size)
+        x = self.transformer_encoder(x)  # Shape: (batch_size, seq_len, embed_size)
         if self.details: print('After transformer encoder:', x.shape)
 
         # classification
