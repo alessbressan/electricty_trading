@@ -19,7 +19,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 EPOCHS = 15
 BATCH_SIZE = 1
 LEARNING_RATE = 2.2e-6
-THRESHOLD = 0.65
+THRESHOLD = 0.5
 
 seq_len = 25
 details = False

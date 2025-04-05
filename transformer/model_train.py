@@ -12,11 +12,11 @@ warnings.filterwarnings('ignore')
 
 if __name__ == "__main__":
     device= "cuda" if torch.cuda.is_available() else "cpu"
-    EPOCHS = 30
-    BATCH_SIZE = 20
-    LEARNING_RATE = 6.6e-6
+    EPOCHS = 15
+    BATCH_SIZE = 5
+    LEARNING_RATE = 2.5e-6
     THRESHOLD = 0.5
-    seq_len = 25
+    seq_len = 60
     details = False
     model = Transformer(seq_len=seq_len, embed_size=12, nhead=4,
                         dim_feedforward=2048, dropout=0.05, details= details, device=device)
