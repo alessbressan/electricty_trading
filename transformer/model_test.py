@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from models.model import Transformer 
-from data_loader.data_loader import DartDataLoader
+from data.data_loader import DartDataLoader
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -25,10 +25,10 @@ seq_len = 25
 details = False
 
 # Load model
-model = Transformer(seq_len=seq_len, embed_size=12, c_out= 128, nhead=4,
+model = Transformer(seq_len=seq_len, embed_size=12, nhead=4,
                     dim_feedforward=2048, dropout=0.04, details= details, device=device)
 model.to(device)
-model.load_state_dict(torch.load('myModel', weights_only=True))
+model.load_state_dict(torch.load('transformer_v0', weights_only=True))
 model.eval()  # Set model to evaluation mode
 
 # Loss and optimizer
@@ -69,14 +69,16 @@ val_probs = np.array(val_probs)  # Convert to numpy array for sklearn
 # Compute confusion matrix
 conf_matrix = confmat(val_preds, val_labels)
 
-# Convert to numpy for visualization
+# Convert to numpy for visualization    
 conf_matrix_np = conf_matrix.cpu().numpy()
 
 # Print confusion matrix values
 print("Confusion Matrix:\n", conf_matrix_np)
+print(val_preds.cpu().numpy())
+np.savetxt("./data/testing_results/transformer_predictions.csv", val_preds.cpu().numpy(), delimiter=",")
+np.savetxt("./data/testing_results/transformer_actual.csv", val_labels.cpu().numpy(), delimiter=",")
 
-metrics = calculate_metrics(conf_matrix)
-for class_id, scores in metrics.items():
-    print(f"Class {class_id}: Precision = {scores['Precision']:.2f}, Recall = {scores['Recall']:.2f}, F1-score = {scores['F1-score']:.2f}")
+idx = np.where((val_preds.cpu().numpy() > 0) & (~np.isnan(val_preds.cpu().numpy())))[0]
+print(f"Average Probability: {np.mean(val_probs[idx])}")
 
 visualization(val_preds, val_labels, val_probs)
