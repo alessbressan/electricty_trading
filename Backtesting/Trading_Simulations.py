@@ -6,7 +6,7 @@ def main():
     # ------------------------------
     # 1) Load original RL predictions (with timestamp column)
     # ------------------------------
-    pred_df = pd.read_csv('final_test_ioan_predicted_spikes.csv', parse_dates=['timestamp'])
+    pred_df = pd.read_csv('data/testing_results/final_test_ioan_predicted_spikes.csv', parse_dates=['timestamp'])
     pred_df.drop(columns=['Unnamed: 0'], errors='ignore', inplace=True)
     pred_df.rename(columns={'predicted_spike': 'predicted_spike_RL'}, inplace=True)
     pred_df.set_index('timestamp', inplace=True)
@@ -14,7 +14,7 @@ def main():
     # ---------------------------------------
     # 2) Load the transformer model's predictions (only one column)
     # ---------------------------------------
-    transformer_df = pd.read_csv('transformer_predictions.csv')
+    transformer_df = pd.read_csv('data/testing_results/transformer_predictions.csv')
     transformer_df.drop(columns=['Unnamed: 0'], errors='ignore', inplace=True)
     n_rows_trans = len(transformer_df)
     timestamps_trans = pd.date_range(end='2023-12-31 23:00:00', periods=n_rows_trans, freq='h')
@@ -27,7 +27,7 @@ def main():
     # ---------------------------------------
     # 3) Load the LSTM model's predictions (only one column)
     # ---------------------------------------
-    lstm_df = pd.read_csv('LSTM_predictions_30.csv')
+    lstm_df = pd.read_csv('data/testing_results/LSTM_predictions_30.csv')
     lstm_df.drop(columns=['Unnamed: 0'], errors='ignore', inplace=True)
     n_rows_lstm = len(lstm_df)
     timestamps_lstm = pd.date_range(end='2023-12-31 23:00:00', periods=n_rows_lstm, freq='h')
