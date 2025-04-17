@@ -52,6 +52,7 @@ class DartDataLoader:
         test_size: Fraction of data to reserve for testing.
         device: Device for tensor allocation.
         """
+        self.df_raw = pd.read_csv(os.path.join(root_path, data_path))
         self.target_column = target_column
         self.seq_len = seq_len
         self.batch_size = batch_size
@@ -96,9 +97,12 @@ class DartDataLoader:
         }
         return dataloaders
     
-    def get_loaders(self):
-        """Returns the training and testing data loaders."""
-        return self.train_loader, self.test_loader
+    def get_train_labels(self):
+        """Returns the training target labels as a NumPy array."""
+        targets = self.df_raw[self.target_column]
+        train_size = int(len(targets) - self.seq_len + 1) * (1 - self.test_size)
+        train_size = int(train_size)  # ensure it's an int
+        return targets[self.seq_len - 1 : self.seq_len - 1 + train_size]
 
 class Dataset_Custom(Dataset):
     def __init__(self, root_path=root_path, flag='train', size=None, 
