@@ -65,18 +65,14 @@ with torch.no_grad():
     test_loss.append(val_loss / val_samples)
 print(f"Training Loss={loss.item()}: Validation Loss={val_loss / val_samples:.4f}")
 
-# Convert to torch tensors
 val_labels = torch.tensor(val_labels)
 val_preds = torch.tensor(val_preds)
-val_probs = np.array(val_probs)  # Convert to numpy array for sklearn
+val_probs = np.array(val_probs) 
 
-# Compute confusion matrix
 conf_matrix = confmat(val_preds, val_labels)
 
-# Convert to numpy for visualization    
 conf_matrix_np = conf_matrix.cpu().numpy()
 
-# Print confusion matrix values
 print("Confusion Matrix:\n", conf_matrix_np)
 print(val_preds.cpu().numpy())
 np.savetxt("./data/testing_results/transformerv2_predictions.csv", val_preds.cpu().numpy(), delimiter=",")

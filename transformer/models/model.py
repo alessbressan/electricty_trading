@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.embed import DataEmbedding
-from models.attn import FullAttention, ProbAttention, AttentionLayer
 from models.layers import PositionalEncoding, ConvLayer, Encoder, EncoderLayer
 from torch.nn.modules.transformer import TransformerEncoderLayer
 
